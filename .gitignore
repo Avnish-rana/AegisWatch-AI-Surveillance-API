@@ -16,10 +16,13 @@ dist/
 build/
 *.egg
 
-# --- Virtual Environments ---
+# --- Virtual Environments & Secrets ---
 venv/
 env/
 .venv/
+.env
+.cache/
+
 
 # --- Model Weights (too large for Git) ---
 # Model files can be 5MB - 500MB+. Use Git LFS or download scripts instead.
