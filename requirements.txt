@@ -1,76 +1,55 @@
-# ============================================================
-# Smart Surveillance System - Dependencies
-# ============================================================
-# Each dependency is explained below.
-#
-# WHY THESE SPECIFIC PACKAGES?
-# We chose each package for a specific reason in our pipeline.
-# ============================================================
+# AegisWatch — Python Dependencies
+# Install with: pip install -r requirements.txt
 
-# --- Core Deep Learning Framework ---
-# PyTorch: The deep learning framework we use for building neural networks.
-# Think of it as the "engine" that powers our LSTM and 3D CNN models.
-# We chose PyTorch over TensorFlow because:
-#   1. More Pythonic and easier to debug
-#   2. Dynamic computation graphs (easier for variable-length sequences)
-#   3. Better research community support
-torch>=2.0.0
-torchvision>=0.15.0
+# ── Core Framework ────────────────────────────────────────
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
 
-# --- Object Detection ---
-# Ultralytics YOLOv8: State-of-the-art real-time object detection.
-# This single package gives us:
-#   - Pretrained models (trained on 80 object classes)
-#   - Built-in object tracking (ByteTrack)
-#   - One-line export to TensorRT/ONNX/TFLite
-#   - Simple Python API
-ultralytics>=8.0.0
+# ── Database ──────────────────────────────────────────────
+sqlalchemy==2.0.35
+aiosqlite==0.20.0
+alembic==1.13.2
 
-# --- Computer Vision ---
-# OpenCV: The Swiss Army knife of computer vision.
-# We use it for:
-#   - Reading video streams (webcam, RTSP, files)
-#   - Drawing bounding boxes and annotations on frames
-#   - Image preprocessing (resize, color conversion)
-#   - Optical flow computation (for motion detection)
-opencv-python>=4.8.0
+# ── Authentication ────────────────────────────────────────
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
 
-# --- Numerical Computing ---
-# NumPy: The foundation for numerical operations in Python.
-# Used for:
-#   - Array operations on image data
-#   - Bounding box coordinate math
-#   - Feature vector manipulation
-numpy>=1.24.0
+# ── HTTP Client ───────────────────────────────────────────
+httpx==0.27.0
+requests==2.32.3
 
-# --- Scientific Computing ---
-# SciPy: Advanced scientific computing utilities.
-# We use it for:
-#   - Spatial distance calculations (person proximity)
-#   - Signal processing (smoothing detection scores)
-scipy>=1.11.0
+# ── AI / Computer Vision ─────────────────────────────────
+# PRIMARY DETECTOR: YOLOv8n (AGPL-3.0)
+ultralytics>=8.2.85
 
-# --- Configuration Management ---
-# PyYAML: Parse YAML configuration files.
-# YAML is more readable than JSON for configuration.
-# Our system is highly configurable via YAML files.
-PyYAML>=6.0
+# Computer vision base
+opencv-python>=4.10.0.84
+numpy>=1.26.4
+Pillow>=10.4.0
 
-# --- Web Dashboard Backend ---
-# Flask: Lightweight web framework for our monitoring dashboard.
-# We chose Flask over Django because:
-#   1. Simpler for a single-page dashboard
-#   2. Less overhead
-#   3. Easy WebSocket integration
-Flask>=3.0.0
+# PyTorch (CPU version — for YOLO + HuggingFace)
+# NOTE: For GPU support, install CUDA torch separately:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+torch>=2.2.0
+torchvision>=0.17.0
 
-# Flask-SocketIO: WebSocket support for Flask.
-# WebSockets enable real-time, bidirectional communication.
-# This is how we stream live video and alerts to the browser
-# WITHOUT the browser constantly polling the server.
-flask-socketio>=5.3.0
+# ── Hugging Face Integration ──────────────────────────────
+# SECONDARY DETECTOR: facebook/detr-resnet-50 (Apache 2.0)
+transformers>=4.40.0
+huggingface_hub>=0.23.0
+timm>=1.0.0        # required by transformers>=5.x for DETR ResNet-50 backbone
 
-# --- Image Processing ---
-# Pillow: Python Imaging Library for image manipulation.
-# Used for saving alert screenshots in various formats.
-Pillow>=10.0.0
+# ── Testing ───────────────────────────────────────────────
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+
+# ── Utilities ─────────────────────────────────────────────
+python-dotenv>=1.0.1
+pydantic>=2.8.2
+pydantic-settings>=2.5.2
+
+# ── Streamlit Cloud Deployment ────────────────────────────
+streamlit>=1.35.0
+pandas>=2.0.0
+

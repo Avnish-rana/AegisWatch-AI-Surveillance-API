@@ -1,0 +1,129 @@
+# AegisWatch — AI-Powered Smart Public Surveillance & Incident Response System
+# Configuration
+
+## Detection settings
+detection:
+  model: yolov8n.pt          # YOLOv8 nano for CPU. Use yolov8m.pt for better accuracy
+  confidence_threshold: 0.45
+  iou_threshold: 0.45
+  target_classes:            # COCO class IDs to track
+    - 0   # person
+    - 24  # backpack
+    - 28  # suitcase
+    - 26  # handbag
+    - 67  # cell phone
+    - 73  # book
+  device: cpu                # cpu | cuda:0 | mps (Apple Silicon)
+
+## Tracking
+tracking:
+  tracker: bytetrack.yaml    # ByteTrack
+  max_disappeared: 30        # frames before track deleted
+  min_track_length: 5        # frames before track is used
+
+## Behavior analysis
+behavior:
+  fight:
+    enabled: true
+    proximity_threshold: 80  # pixels
+    motion_threshold: 0.5
+    min_confidence: 0.65
+  
+  theft:
+    enabled: true
+    proximity_threshold: 60
+    stationary_threshold_seconds: 10
+    min_confidence: 0.60
+  
+  intrusion:
+    enabled: true
+    # Zones loaded from database
+  
+  loitering:
+    enabled: true
+    threshold_seconds: 300   # 5 minutes default (overridden per zone)
+    min_confidence: 0.75
+  
+  abandoned_object:
+    enabled: true
+    stationary_threshold_seconds: 30
+    separation_threshold_pixels: 150
+    min_confidence: 0.70
+  
+  suspicious_movement:
+    enabled: true
+    erratic_threshold: 0.6
+    speed_threshold: 8.0
+    direction_change_threshold: 120.0
+    min_confidence: 0.60
+
+## Risk scoring
+risk:
+  fight_base: 70
+  theft_base: 55
+  intrusion_base: 65
+  loitering_base: 25
+  abandoned_object_base: 60
+  suspicious_movement_base: 40
+  weapon_detected_base: 95
+  
+  # Severity thresholds
+  thresholds:
+    critical: 80
+    high: 60
+    medium: 35
+    low: 0
+
+## Evidence capture
+evidence:
+  snapshot_enabled: true
+  video_clip_enabled: true
+  pre_event_seconds: 5
+  post_event_seconds: 10
+  output_dir: data/evidence
+  max_resolution: [1280, 720]
+  video_fps: 15
+  video_codec: mp4v
+
+## Backend API
+backend:
+  url: http://localhost:8000
+  api_key: null              # Set if you add API key protection
+  timeout_seconds: 10
+  incident_cooldown_seconds: 30    # Min seconds between same-type incidents on same camera
+
+## Video sources (for demo mode)
+demo:
+  cameras:
+    - id: CAM-001
+      name: Main Gate
+      source: data/videos/demo/fight.mp4
+      loop: true
+      fps: 25
+    - id: CAM-002
+      name: Parking Area
+      source: data/videos/demo/loitering.mp4
+      loop: true
+      fps: 25
+    - id: CAM-003
+      name: Lobby
+      source: data/videos/demo/theft.mp4
+      loop: true
+      fps: 25
+    - id: CAM-004
+      name: Market Street
+      source: data/videos/demo/intrusion.mp4
+      loop: true
+      fps: 25
+    - id: CAM-005
+      name: Back Exit
+      source: data/videos/demo/abandoned.mp4
+      loop: true
+      fps: 25
+
+## Logging
+logging:
+  level: INFO
+  file: data/logs/aegiswatch.log
+  max_bytes: 10485760  # 10 MB
+  backup_count: 5

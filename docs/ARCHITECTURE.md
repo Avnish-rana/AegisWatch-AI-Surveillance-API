@@ -1,98 +1,138 @@
-# System Architecture — AegisEdge Smart Surveillance
-===================================================
+# AegisWatch — Architecture Document
 
-This document provides a detailed architectural overview of the AegisEdge Smart Surveillance system, explaining the design patterns, data flow, threading model, and technical decisions.
+## System Overview
 
-## 1. System Overview
+AegisWatch is a single-server, software-only AI surveillance prototype designed to run on a normal Windows laptop.
 
-AegisEdge is a real-time Edge AI surveillance system that processes live video feeds, tracks multiple objects, extracts spatial features, evaluates temporal behavior sequences, and fires deduplicated alert events to a local web dashboard.
-
-```mermaid
-graph TD
-    %% Video Ingestion
-    A[Video Stream Source<br/>Webcam / RTSP / File] -->|Raw Frames| B[Thread-Safe VideoStream<br/>Buffer Queue]
-    
-    %% Main Processing Pipeline
-    B -->|Latest Frame| C[Object Detector & Tracker<br/>YOLOv8 + ByteTrack]
-    C -->|BBoxes & Track IDs| D[Person Crop Router]
-    
-    %% Feature & Sequence Analytics
-    D -->|Person Crops| E[ROI Feature Extractor<br/>MobileNetV3 Backbone]
-    E -->|576-dim Vector| F[Temporal sequence Buffer<br/>Deque Window length: 16]
-    F -->|Feature Sequences| G[Temporal Anomaly Predictor<br/>LSTM Classifier]
-    
-    %% Threat Rule Fusions
-    C -->|All Detections| H{Threat Analytic Engines}
-    G -->|Behavior Scores| H
-    
-    H -->|Distance & Motion| I[Fight Detector]
-    H -->|Point-in-Polygon| J[Zone Monitor]
-    H -->|Disappearance| K[Theft Detector]
-    
-    %% Alert & Logging Engine
-    I -->|Altercation Alert| L[Alert Engine]
-    J -->|Intrusion Alert| L
-    K -->|Theft Alert| L
-    
-    L -->|Trigger & Deduplicate| M[Event Logger]
-    M -->|Append Record| N[(JSONL Event Log)]
-    M -->|Save BBox Frame| O[Screenshot Directory]
-    
-    %% Dashboard Streaming
-    C -->|Detections & BBoxes| P[Frame Annotator]
-    L -->|Active Alerts| P
-    P -->|Annotated Frame| Q[Dashboard Server<br/>Flask + WebSockets]
-    L -->|JSON Alert Event| Q
-    Q -->|MJPEG Feed & WS Events| R[Web Dashboard Client<br/>HTML/CSS/JS]
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                         BROWSER (Frontend SPA)                       │
+│  Dashboard │ Surveillance │ Incidents │ Map │ Analytics │ Responders │
+└───────────────────────────┬──────────────────────────────────────────┘
+                            │  HTTP REST + WebSocket
+┌───────────────────────────▼──────────────────────────────────────────┐
+│                    FastAPI Backend (Python 3.12)                      │
+│  ┌────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌─────────────┐  │
+│  │  auth  │ │ cameras  │ │incidents │ │responders│ │ surveillance │  │
+│  └────────┘ └──────────┘ └──────────┘ └──────────┘ └──────┬──────┘  │
+│                                                             │         │
+│  ┌──────────────────────────────────────────────────────────▼──────┐  │
+│  │                      AI Service Layer                           │  │
+│  │  ┌────────────────┐  ┌────────────────┐  ┌──────────────────┐  │  │
+│  │  │ ModelManager   │  │ Behavior Engine│  │  Risk Engine     │  │  │
+│  │  │ (yolov8/detr)  │  │ (rule-based)   │  │  (0-100 score)   │  │  │
+│  │  └────────────────┘  └────────────────┘  └──────────────────┘  │  │
+│  └──────────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌───────────────────┐  │
+│  │  SQLite Database │  │  WebSocket Mgr   │  │  Static Files     │  │
+│  │  (SQLAlchemy)    │  │  (Real-time WS)  │  │  (Frontend SPA)   │  │
+│  └──────────────────┘  └──────────────────┘  └───────────────────┘  │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Multi-Threaded Execution Model
+## Components
 
-A single-threaded design would suffer from severe latency bottlenecking. Deep learning inference (YOLOv8 + MobileNetV3 + LSTM) takes non-trivial execution time. If we captured frames, ran inference, and updated the UI in a single thread, the video feed would lag and drop frames.
+### Backend (FastAPI)
 
-AegisEdge uses a **three-tier multi-threaded architecture** to maintain real-time performance:
+| Component | File | Purpose |
+|-----------|------|---------|
+| Main App | `backend/src/main.py` | Entry point, routing, CORS, startup |
+| Database | `backend/src/database.py` | SQLAlchemy async engine (SQLite) |
+| Auth | `backend/src/auth.py` | JWT tokens, password hashing |
+| AI Service | `backend/src/services/ai_service.py` | Frame processing, behavior analysis |
+| Incident Service | `backend/src/services/incident_service.py` | FSM, creation, history |
+| Responder Service | `backend/src/services/responder_service.py` | Haversine, nearest-responder |
+| Alert Service | `backend/src/services/alert_service.py` | WebSocket broadcast |
 
-1. **Capture Thread (`VideoStream`):**
-   - Continuously grabs raw frames from the camera or RTSP stream at 30 FPS.
-   - Pushes frames into a thread-safe double-buffered `queue.Queue`.
-   - Prevents OpenCV buffer buildup (ensuring the main thread always processes the absolute newest frame).
-2. **Dashboard Server Thread (`DashboardServer`):**
-   - Runs Flask and Flask-SocketIO.
-   - Listens for dashboard client connections and serves assets.
-   - Broadcasts JSON metrics (FPS, CPU load, active tracks) and alert cards.
-   - Yields compressed JPEG frames as an HTTP multipart MJPEG stream.
-3. **Main Pipeline Thread (`SurveillancePipeline`):**
-   - Drives the core logic loop.
-   - Fetches the latest frame from the VideoStream queue.
-   - Executes object tracking, posture extraction, behavior classification, and threat rule fusions.
-   - Sends annotated output frames to the dashboard queue and triggers socket notifications.
+### API Routers
+
+| Router | Prefix | Description |
+|--------|--------|-------------|
+| auth.py | `/api/auth` | Login, me, logout |
+| cameras.py | `/api/cameras` | CRUD, toggle, stream-info |
+| incidents.py | `/api/incidents` | Full FSM workflow |
+| responders.py | `/api/responders` | CRUD, nearest, availability |
+| surveillance.py | `/api/surveillance` | Start/stop/status, frame processing |
+| analytics.py | `/api/analytics` | Summary, charts, distributions |
+| evidence.py | `/api/evidence` | File list, serve |
+| zones.py | `/api/zones` | CRUD detection zones |
+| stream.py | `/api/stream` | MJPEG stream, snapshot |
+
+### AI Models
+
+| Key | Model | License | Size |
+|-----|-------|---------|------|
+| `yolov8` (primary) | YOLOv8n | AGPL-3.0 | 6.5 MB |
+| `detr` (secondary/HF) | facebook/detr-resnet-50 | Apache 2.0 | 166 MB |
+
+### Database (SQLite via SQLAlchemy async)
+
+Tables: `users`, `cameras`, `incidents`, `evidence`, `responders`, `assignments`,
+`zones`, `detection_logs`, `incident_status_history`, `system_settings`
 
 ---
 
-## 3. Key Design Patterns
+## Data Flow
 
-### 3.1. Thread-Safe Producer-Consumer (Double Buffering)
-The `VideoStream` thread acts as a producer, filling a small buffer queue of size 2. The `SurveillancePipeline` acts as the consumer, clearing the queue. If the queue is full, the producer drops the oldest frame. This pattern ensures the system never falls behind the camera's live time (zero lag accumulation).
+### Live Webcam Mode
 
-### 3.2. Hybrid AI & Rule-Based Heuristic Fusion
-Using heavy deep-learning networks for every sub-task is inefficient on edge devices (like Jetson Nano). 
-- We use a **hybrid fusion** approach: we run a lightweight object tracker (YOLOv8-nano) to isolate regions of interest (ROIs).
-- For fight detection, we run a fast motion checker (Farneback Optical Flow) and physical distance checks. We only run the LSTM posture sequence classifier if two people are in close proximity and exhibiting high-energy movement. This saves significant GPU/CPU overhead.
+```
+Webcam → getUserMedia() → HTMLVideoElement
+                       → Canvas.drawImage()
+                       → canvas.toDataURL() → base64 frame
+                       → POST /api/surveillance/frame
+                       → ai_service.process_frame()
+                       → YOLOv8n.predict()
+                       → Behavior Analysis
+                       → Incident created (if triggered)
+                       → WebSocket broadcast → Browser alert
+                       → Bounding boxes drawn on canvas
+```
 
-### 3.3. State Machine Tracker
-The system monitors restricted zones and thefts by maintaining a history of objects. The `ZoneMonitor` tracks whether a person's coordinate transitions from "outside" to "inside" a polygon, triggering an alert on the transition edge rather than spamming alert records repeatedly.
+### Video Upload Mode
+
+```
+User uploads .mp4 → POST /api/surveillance/upload-video
+                  → File saved to data/uploads/
+                  → POST /api/surveillance/start-video?camera_id=...
+                  → Background thread reads frames via OpenCV
+                  → Same AI pipeline as webcam mode
+                  → GET /api/surveillance/jobs → progress polling
+                  → Results displayed in frontend
+```
 
 ---
 
-## 4. Interview Talking Points (Recruiter Prep)
+## Security Design
 
-When presenting this architecture in placement interviews, highlight these structural design decisions:
+- JWT bearer tokens (24h expiry)
+- Password hashing with bcrypt
+- No facial recognition (privacy by design)
+- Anonymous track IDs only (Person #14 etc.)
+- Human-in-the-loop verification before dispatch
+- All incident creation requires human verification step
 
-* **"How do you ensure the video feed is real-time without lagging?"**
-  * *Answer:* "I implemented a thread-safe double-buffer frame grabber. The camera capture runs in a dedicated background thread, decoupled from the main inference pipeline. If the AI pipeline takes 50ms to run a frame, the capture thread drops intermediate frames and always serves the latest frame, preventing lag accumulation."
-* **"Why did you use a hybrid rule-based and deep learning model instead of an end-to-end 3D CNN?"**
-  * *Answer:* "End-to-end 3D CNNs are highly accurate but computationally heavy, making them unsuitable for edge deployments like Jetson Nano or Raspberry Pi. My hybrid approach uses YOLOv8 to extract bounding boxes, runs simple geometry and optical flow as a 'fast gate' to filter out empty or calm scenes, and only invokes the MobileNet+LSTM sequence network on active candidates. This reduces average inference latency by over 60%."
-* **"How does the alert engine prevent duplicate notifications?"**
-  * *Answer:* "I built a dedicated Alert Engine with configurable cooldown thresholds per event type. It maps event signatures and suppresses duplicate reports within the cooldown period (e.g., 30 seconds), preventing the system from flooding databases or notification channels with 30 alerts per second during a continuous event."
+---
+
+## Incident Status FSM
+
+```
+NEW → UNDER_REVIEW → VERIFIED → ASSIGNED → ACCEPTED → RESPONDING → RESOLVED
+ ↓        ↓             ↓           ↓
+CANCELLED CANCELLED   CANCELLED  CANCELLED
+          ↓
+    FALSE_POSITIVE
+```
+
+---
+
+## Deployment (Local)
+
+- Single process: `uvicorn backend.src.main:app --port 8000`
+- Frontend served as static files by FastAPI
+- No Docker required
+- No cloud required
+- All data stored in `surveillance.db` (SQLite)

@@ -1,0 +1,321 @@
+/* ============================================================
+   AegisWatch — Component CSS (Modal, Map overlays)
+   ============================================================ */
+
+/* ── Modal ─────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 8000;
+  background: rgba(0, 5, 15, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-container {
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 80px rgba(0,0,0,0.6);
+  animation: slideUp 0.25s ease;
+  overflow: hidden;
+}
+
+.modal-container.modal-lg { max-width: 900px; }
+.modal-container.modal-sm { max-width: 440px; }
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.modal-header h3 { font-size: 1rem; }
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: all var(--transition);
+}
+.modal-close:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+
+.modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.15);
+}
+
+/* ── Confirm dialog ────────────────────────────────────── */
+.confirm-dialog {
+  text-align: center;
+  padding: 8px;
+}
+
+.confirm-icon { font-size: 2.5rem; margin-bottom: 12px; }
+.confirm-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
+.confirm-message { font-size: 0.825rem; color: var(--text-secondary); }
+
+/* ── Map styling (Leaflet overrides) ─────────────────────── */
+.leaflet-container {
+  background: #0d1629 !important;
+  font-family: var(--font-sans) !important;
+}
+
+.leaflet-tile { filter: brightness(0.7) saturate(0.6) hue-rotate(180deg); }
+
+/* Custom popup */
+.leaflet-popup-content-wrapper {
+  background: rgba(13, 18, 33, 0.97) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4) !important;
+  color: var(--text-primary) !important;
+}
+
+.leaflet-popup-tip { background: rgba(13, 18, 33, 0.97) !important; }
+.leaflet-popup-content { margin: 12px 16px !important; font-size: 0.8rem; }
+
+.map-popup-title { font-weight: 700; font-size: 0.875rem; margin-bottom: 6px; }
+.map-popup-meta  { font-size: 0.75rem; color: var(--text-secondary); }
+.map-popup-badge { margin-top: 6px; }
+
+/* Map layer controls */
+.leaflet-control-layers, .leaflet-control-zoom {
+  border: 1px solid var(--border-color) !important;
+  background: rgba(13, 18, 33, 0.95) !important;
+}
+
+.leaflet-control-zoom-in, .leaflet-control-zoom-out {
+  color: var(--text-secondary) !important;
+  background: transparent !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.leaflet-control-zoom-in:hover, .leaflet-control-zoom-out:hover {
+  color: var(--text-primary) !important;
+  background: rgba(255,255,255,0.06) !important;
+}
+
+/* Custom map markers */
+.camera-marker-icon, .incident-marker-icon, .responder-marker-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid;
+  font-size: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+/* ── Map page layout ───────────────────────────────────── */
+.map-page-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 16px;
+  height: calc(100vh - var(--topbar-height) - 40px);
+}
+
+.map-sidebar {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.map-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Live feed grid ────────────────────────────────────── */
+.feed-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.feed-grid-2 { grid-template-columns: 1fr 1fr; }
+.feed-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+.feed-grid-4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+
+.feed-item {
+  background: #000;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  position: relative;
+  border: 1px solid var(--border-color);
+  aspect-ratio: 16/9;
+}
+
+.feed-item.active-incident {
+  border-color: rgba(252,69,69,0.5);
+  box-shadow: 0 0 0 1px rgba(252,69,69,0.3);
+}
+
+.feed-label {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(8px);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: white;
+}
+
+.feed-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.feed-no-signal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.feed-no-signal .icon { font-size: 2rem; opacity: 0.4; }
+
+/* ── Zone definition form ──────────────────────────────── */
+.zone-color-picker {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.color-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color var(--transition), transform var(--transition);
+}
+
+.color-swatch:hover, .color-swatch.selected {
+  border-color: white;
+  transform: scale(1.2);
+}
+
+/* ── Assignment panel ──────────────────────────────────── */
+.assignment-panel {
+  background: rgba(99,179,237,0.06);
+  border: 1px solid rgba(99,179,237,0.2);
+  border-radius: var(--radius-md);
+  padding: 14px;
+}
+
+.assignment-header {
+  font-size: 0.72rem;
+  color: var(--text-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+/* ── Critical alert banner ─────────────────────────────── */
+.critical-alert-banner {
+  background: linear-gradient(135deg, rgba(252,69,69,0.15), rgba(155,35,53,0.1));
+  border: 1px solid rgba(252,69,69,0.4);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  animation: alertPulse 2s ease-in-out infinite;
+}
+
+@keyframes alertPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(252,69,69,0.3); }
+  50% { box-shadow: 0 0 0 8px rgba(252,69,69,0); }
+}
+
+.alert-icon-large { font-size: 2rem; }
+.alert-details { flex: 1; }
+.alert-details h4 { color: var(--color-critical); font-size: 1rem; margin-bottom: 4px; }
+.alert-details p  { font-size: 0.8rem; color: var(--text-secondary); }
+.alert-actions { display: flex; gap: 8px; }
+
+/* ── No data / skeleton ────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, 
+    rgba(255,255,255,0.05) 25%, 
+    rgba(255,255,255,0.1) 50%, 
+    rgba(255,255,255,0.05) 75%);
+  background-size: 200% 100%;
+  animation: skeleton 1.4s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Tabs for analytics ─────────────────────────────────── */
+.analytics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 800px) {
+  .analytics-grid { grid-template-columns: 1fr; }
+  .map-page-layout { grid-template-columns: 1fr; }
+  .feed-grid-2, .feed-grid-3, .feed-grid-4 { grid-template-columns: 1fr; }
+}

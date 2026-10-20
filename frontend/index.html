@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AegisWatch — AI Surveillance & Incident Response</title>
+  <meta name="description" content="AI-Powered Smart Public Surveillance & Incident Response System. Real-time CCTV monitoring with YOLO detection, incident management, and responder dispatch." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="/frontend/css/main.css" />
+  <link rel="stylesheet" href="/frontend/css/components.css" />
+  <link rel="stylesheet" href="/frontend/css/map.css" />
+</head>
+<body>
+  <!-- Login overlay (shown when not authenticated) -->
+  <div id="login-overlay" class="login-overlay hidden">
+    <div class="login-card glass-card">
+      <div class="login-logo">
+        <div class="logo-icon">🛡️</div>
+        <h1>AegisWatch</h1>
+        <p>AI-Powered Surveillance & Incident Response</p>
+      </div>
+      <form id="login-form" class="login-form">
+        <div class="form-group">
+          <label for="login-username">Username</label>
+          <input type="text" id="login-username" name="username" placeholder="Enter username" autocomplete="username" required />
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" name="password" placeholder="Enter password" autocomplete="current-password" required />
+        </div>
+        <div id="login-error" class="alert alert-danger hidden"></div>
+        <button type="submit" id="login-btn" class="btn btn-primary btn-full">
+          <span class="btn-text">Sign In</span>
+          <span class="btn-spinner hidden">⏳</span>
+        </button>
+      </form>
+      <div class="login-demo-hint">
+        <strong>Demo credentials:</strong><br/>
+        Admin: <code>admin / admin123</code><br/>
+        Operator: <code>operator / operator123</code><br/>
+        Responder: <code>responder1 / resp123</code>
+      </div>
+      <div class="disclaimer">
+        ⚠️ AI-generated detections are probabilistic and require authorized human verification. Not for real emergency use.
+      </div>
+    </div>
+  </div>
+
+  <!-- Main application layout -->
+  <div id="app" class="app-layout hidden">
+    <!-- Sidebar -->
+    <nav id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <span class="logo-icon-sm">🛡️</span>
+          <span class="logo-text">AegisWatch</span>
+        </div>
+        <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+      </div>
+
+      <div class="sidebar-user">
+        <div class="user-avatar" id="user-avatar">A</div>
+        <div class="user-info">
+          <div class="user-name" id="user-name">Admin</div>
+          <div class="user-role badge" id="user-role-badge">ADMIN</div>
+        </div>
+      </div>
+
+      <ul class="sidebar-nav" role="navigation">
+        <li class="nav-section-label">OVERVIEW</li>
+        <li><a href="#/dashboard" class="nav-link active" data-page="dashboard" id="nav-dashboard">
+          <span class="nav-icon">📊</span><span class="nav-label">Dashboard</span>
+        </a></li>
+        <li><a href="#/map" class="nav-link" data-page="map" id="nav-map">
+          <span class="nav-icon">🗺️</span><span class="nav-label">Live Map</span>
+        </a></li>
+
+        <li class="nav-section-label">SURVEILLANCE</li>
+        <li><a href="#/cameras" class="nav-link" data-page="cameras" id="nav-cameras">
+          <span class="nav-icon">📷</span><span class="nav-label">Cameras</span>
+        </a></li>
+        <li><a href="#/surveillance" class="nav-link" data-page="surveillance" id="nav-surveillance">
+          <span class="nav-icon">🎯</span><span class="nav-label">Surveillance</span>
+        </a></li>
+        <li><a href="#/live" class="nav-link" data-page="live" id="nav-live">
+          <span class="nav-icon">📡</span><span class="nav-label">Live Feeds</span>
+        </a></li>
+        <li><a href="#/zones" class="nav-link" data-page="zones" id="nav-zones">
+          <span class="nav-icon">🔒</span><span class="nav-label">Zones</span>
+        </a></li>
+
+        <li class="nav-section-label">INCIDENTS</li>
+        <li><a href="#/incidents" class="nav-link" data-page="incidents" id="nav-incidents">
+          <span class="nav-icon">🚨</span><span class="nav-label">Incidents</span>
+          <span class="badge badge-danger nav-badge" id="incident-badge" style="display:none">0</span>
+        </a></li>
+        <li><a href="#/responders" class="nav-link" data-page="responders" id="nav-responders">
+          <span class="nav-icon">👮</span><span class="nav-label">Responders</span>
+        </a></li>
+
+        <li class="nav-section-label">ANALYTICS</li>
+        <li><a href="#/analytics" class="nav-link" data-page="analytics" id="nav-analytics">
+          <span class="nav-icon">📈</span><span class="nav-label">Analytics</span>
+        </a></li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div class="system-status">
+          <span class="status-dot" id="ws-status-dot"></span>
+          <span id="ws-status-text">Connecting...</span>
+        </div>
+        <button id="logout-btn" class="btn btn-ghost btn-sm">Sign Out</button>
+      </div>
+    </nav>
+
+    <!-- Main content area -->
+    <main id="main-content" class="main-content">
+      <!-- Top bar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <h2 id="page-title" class="page-title">Dashboard</h2>
+          <div id="page-breadcrumb" class="breadcrumb">Home / Dashboard</div>
+        </div>
+        <div class="topbar-right">
+          <div class="topbar-time" id="topbar-time"></div>
+          <button id="notif-btn" class="icon-btn" aria-label="Notifications">
+            🔔
+            <span class="notif-count hidden" id="notif-count">0</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Alert toast container -->
+      <div id="alert-container" class="alert-toast-container" aria-live="polite"></div>
+
+      <!-- Page content injected here -->
+      <div id="page-content" class="page-content">
+        <div class="loading-screen">
+          <div class="spinner-large"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal container -->
+  <div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div id="modal-container" class="modal-container glass-card">
+      <div class="modal-header">
+        <h3 id="modal-title">Modal</h3>
+        <button id="modal-close" class="modal-close" aria-label="Close modal">✕</button>
+      </div>
+      <div id="modal-body" class="modal-body"></div>
+      <div id="modal-footer" class="modal-footer"></div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="/frontend/js/api.js"></script>
+  <script src="/frontend/js/websocket.js"></script>
+  <script src="/frontend/js/components/modal.js"></script>
+  <script src="/frontend/js/components/alert-toast.js"></script>
+  <script src="/frontend/js/components/sidebar.js"></script>
+  <script src="/frontend/js/pages/dashboard.js"></script>
+  <script src="/frontend/js/pages/cameras.js"></script>
+  <script src="/frontend/js/pages/incidents.js"></script>
+  <script src="/frontend/js/pages/responders.js"></script>
+  <script src="/frontend/js/pages/analytics.js"></script>
+  <script src="/frontend/js/pages/map.js"></script>
+  <script src="/frontend/js/pages/live.js"></script>
+  <script src="/frontend/js/pages/zones.js"></script>
+  <script src="/frontend/js/pages/surveillance.js"></script>
+  <script src="/frontend/js/app.js"></script>
+</body>
+</html>
